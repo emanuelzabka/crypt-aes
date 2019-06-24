@@ -90,16 +90,19 @@ func mixColumns(src, dst []byte) {
 	}
 }
 
-func addRoundKey(state []byte, keys []byte, round int) {
-	// key row offset
-	krOff := round*4
+func extractRoundKey(keys []byte, round int) []byte {
+	// @TODO store round keys in distinct arrays and eliminate extractRoundKey function
+	return keys[round*16:round*16+16]
+}
+
+func addRoundKey(state []byte, key []byte) {
 	for c := 0; c < 4; c++ {
 		// column offset
 		cOff := c*4
-		state[0+cOff] ^= keys[krOff+c+0]
-		state[1+cOff] ^= keys[krOff+c+1]
-		state[2+cOff] ^= keys[krOff+c+2]
-		state[3+cOff] ^= keys[krOff+c+3]
+		state[0+cOff] ^= key[0+cOff]
+		state[1+cOff] ^= key[1+cOff]
+		state[2+cOff] ^= key[2+cOff]
+		state[3+cOff] ^= key[3+cOff]
 	}
 }
 
@@ -175,19 +178,19 @@ func (c *AESCipher) Encrypt(block, dest []byte) {
 	var state []byte = make([]byte, 16)
 	var tmpState []byte = make([]byte, 16)
 	copy(state, block)
-	addRoundKey(state, c.expandedKeys, 0)
+	addRoundKey(state, extractRoundKey(c.expandedKeys, 0))
 	for r := 1; r < c.numRounds - 1; r++ {
 		subBytes(state)
 		copy(tmpState, state)
 		shiftRows(tmpState, state)
 		copy(tmpState, state)
 		mixColumns(tmpState, state)
-		addRoundKey(state, c.expandedKeys, r)
+		addRoundKey(state, extractRoundKey(c.expandedKeys, r))
 	}
 	subBytes(state)
 	copy(tmpState, state)
 	shiftRows(tmpState, state)
-	addRoundKey(state, c.expandedKeys, c.numRounds)
+	addRoundKey(state, extractRoundKey(c.expandedKeys, c.numRounds))
 	copy(dest, state)
 }
 

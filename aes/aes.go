@@ -9,7 +9,7 @@ type AESCipher struct {
 	keyLength int
 	numRounds int
 	key []byte
-	expandedKeys []byte
+	expandedKeys [][]byte
 };
 
 var sBoxMatrix []byte = []byte{
@@ -91,7 +91,6 @@ func mixColumns(src, dst []byte) {
 }
 
 func extractRoundKey(keys []byte, round int) []byte {
-	// @TODO store round keys in distinct arrays and eliminate extractRoundKey function
 	return keys[round*16:round*16+16]
 }
 
@@ -160,7 +159,7 @@ func keyExpansion(key, expandedKeys []byte, keyLength int) {
 
 func NewCipher(key []byte) (*AESCipher, error) {
 	var err error = nil
-	if len(key) != 16 && len(key) != 32 && len(key) != 64 {
+	if len(key) != 16 && len(key) != 24 && len(key) != 32 {
 		err = errors.New("Invalid key length. Allowed lengths: 128-bit (16 bytes), 192-bit (24 bytes), 256-bit (64 bytes)")
 		return nil, err
 	}
@@ -169,8 +168,12 @@ func NewCipher(key []byte) (*AESCipher, error) {
 	copy(cipher.key, key)
 	cipher.keyLength = len(key) / 4
 	cipher.numRounds = getNumRounds(cipher.keyLength)
-	cipher.expandedKeys = make([]byte, (cipher.numRounds+1)*cipher.keyLength*4)
-	keyExpansion(cipher.key, cipher.expandedKeys, cipher.keyLength)
+	expandedKeys := make([]byte, (cipher.numRounds+1)*cipher.keyLength*4)
+	keyExpansion(cipher.key, expandedKeys, cipher.keyLength)
+	cipher.expandedKeys = make([][]byte, cipher.numRounds+1)
+	for i := 0; i < cipher.numRounds+1; i++ {
+		cipher.expandedKeys[i] = extractRoundKey(expandedKeys, i)
+	}
 	return cipher, err
 }
 
@@ -178,19 +181,19 @@ func (c *AESCipher) Encrypt(block, dest []byte) {
 	var state []byte = make([]byte, 16)
 	var tmpState []byte = make([]byte, 16)
 	copy(state, block)
-	addRoundKey(state, extractRoundKey(c.expandedKeys, 0))
-	for r := 1; r < c.numRounds - 1; r++ {
+	addRoundKey(state, c.expandedKeys[0])
+	for r := 1; r < c.numRounds; r++ {
 		subBytes(state)
 		copy(tmpState, state)
 		shiftRows(tmpState, state)
 		copy(tmpState, state)
 		mixColumns(tmpState, state)
-		addRoundKey(state, extractRoundKey(c.expandedKeys, r))
+		addRoundKey(state, c.expandedKeys[r])
 	}
 	subBytes(state)
 	copy(tmpState, state)
 	shiftRows(tmpState, state)
-	addRoundKey(state, extractRoundKey(c.expandedKeys, c.numRounds))
+	addRoundKey(state, c.expandedKeys[c.numRounds])
 	copy(dest, state)
 }
 

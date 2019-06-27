@@ -6,12 +6,11 @@ import (
 )
 
 type AESCipher struct {
-	keyLength int
-	numRounds int
-	key []byte
+	keyLength    int
+	numRounds    int
+	key          []byte
 	expandedKeys [][]byte
-	invExpandedKeys [][]byte
-};
+}
 
 var sBoxMatrix []byte = []byte{
 	0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -86,7 +85,7 @@ func shiftRows(state []byte) {
 	for r := 1; r < 4; r++ {
 		for c := 0; c < 4; c++ {
 			// state[r][c] = state[r][(c+shift(r)) mod 4]
-			state[r+c*4] = aux[r+((c + r) & 3)*4]
+			state[r+c*4] = aux[r+((c+r)&3)*4]
 		}
 	}
 }
@@ -97,7 +96,7 @@ func invShiftRows(state []byte) {
 	for r := 1; r < 4; r++ {
 		for c := 0; c < 4; c++ {
 			// state[r][c] = state[r][(c+shift(r)) mod 4]
-			state[r+((c + r) & 3)*4] = aux[r+c*4]
+			state[r+((c+r)&3)*4] = aux[r+c*4]
 		}
 	}
 }
@@ -106,7 +105,7 @@ func invShiftRows(state []byte) {
 func gfMul(a, b byte) byte {
 	var prod byte = 0
 	for a != 0 && b != 0 {
-		if b & 1 != 0 {
+		if b&1 != 0 {
 			prod ^= a
 		}
 		b >>= 1
@@ -124,7 +123,7 @@ func mixColumns(state []byte) {
 	copy(aux, state)
 	for c := 0; c < 4; c++ {
 		// column offset
-		cOff := c*4
+		cOff := c * 4
 		state[0+cOff] = gfMul(0x02, aux[0+cOff]) ^ gfMul(0x03, aux[1+cOff]) ^ aux[2+cOff] ^ aux[3+cOff]
 		state[1+cOff] = aux[0+cOff] ^ gfMul(0x02, aux[1+cOff]) ^ gfMul(0x03, aux[2+cOff]) ^ aux[3+cOff]
 		state[2+cOff] = aux[0+cOff] ^ aux[1+cOff] ^ gfMul(0x02, aux[2+cOff]) ^ gfMul(0x03, aux[3+cOff])
@@ -137,7 +136,7 @@ func invMixColumns(state []byte) {
 	copy(aux, state)
 	for c := 0; c < 4; c++ {
 		// column offset
-		cOff := c*4
+		cOff := c * 4
 		state[0+cOff] = gfMul(0x0e, aux[0+cOff]) ^ gfMul(0x0b, aux[1+cOff]) ^ gfMul(0x0d, aux[2+cOff]) ^ gfMul(0x09, aux[3+cOff])
 		state[1+cOff] = gfMul(0x09, aux[0+cOff]) ^ gfMul(0x0e, aux[1+cOff]) ^ gfMul(0x0b, aux[2+cOff]) ^ gfMul(0x0d, aux[3+cOff])
 		state[2+cOff] = gfMul(0x0d, aux[0+cOff]) ^ gfMul(0x09, aux[1+cOff]) ^ gfMul(0x0e, aux[2+cOff]) ^ gfMul(0x0b, aux[3+cOff])
@@ -145,14 +144,10 @@ func invMixColumns(state []byte) {
 	}
 }
 
-func extractRoundKey(keys []byte, round int) []byte {
-	return keys[round*16:round*16+16]
-}
-
 func addRoundKey(state, key []byte) {
 	for c := 0; c < 4; c++ {
 		// column offset
-		cOff := c*4
+		cOff := c * 4
 		state[0+cOff] ^= key[0+cOff]
 		state[1+cOff] ^= key[1+cOff]
 		state[2+cOff] ^= key[2+cOff]
@@ -189,19 +184,19 @@ func getNumRounds(keyLength int) int {
 
 func keyExpansion(key, expandedKeys []byte, keyLength int) {
 	var temp uint32
-	var wordKeys [15*4]uint32
+	var wordKeys [15 * 4]uint32
 	var numRounds int = getNumRounds(keyLength)
 	i := 0
 	for i < keyLength {
-		wordKeys[i] = binary.BigEndian.Uint32(key[4*i:(4*i+4)])
+		wordKeys[i] = binary.BigEndian.Uint32(key[4*i : (4*i + 4)])
 		i++
 	}
 	i = keyLength
 	for i < 4*(numRounds+1) {
 		temp = wordKeys[i-1]
-		if i % keyLength == 0 {
-			temp = subWord(rotWord(temp)) ^ rCon[i/keyLength - 1]
-		} else if keyLength > 6 && i % keyLength == 4 {
+		if i%keyLength == 0 {
+			temp = subWord(rotWord(temp)) ^ rCon[i/keyLength-1]
+		} else if keyLength > 6 && i%keyLength == 4 {
 			temp = subWord(temp)
 		}
 		wordKeys[i] = wordKeys[i-keyLength] ^ temp
@@ -210,6 +205,10 @@ func keyExpansion(key, expandedKeys []byte, keyLength int) {
 	for i = 0; i < 4*(numRounds+1); i++ {
 		binary.BigEndian.PutUint32(expandedKeys[i*4:(i*4+4)], wordKeys[i])
 	}
+}
+
+func extractRoundKey(keys []byte, round int) []byte {
+	return keys[round*16 : round*16+16]
 }
 
 func NewCipher(key []byte) (*AESCipher, error) {
@@ -226,16 +225,9 @@ func NewCipher(key []byte) (*AESCipher, error) {
 	expandedKeys := make([]byte, (cipher.numRounds+1)*cipher.keyLength*4)
 	keyExpansion(cipher.key, expandedKeys, cipher.keyLength)
 	cipher.expandedKeys = make([][]byte, cipher.numRounds+1)
-	cipher.invExpandedKeys = make([][]byte, cipher.numRounds+1)
 	for i := 0; i < cipher.numRounds+1; i++ {
 		cipher.expandedKeys[i] = extractRoundKey(expandedKeys, i)
-		cipher.invExpandedKeys[i] = make([]byte, len(cipher.expandedKeys[i]))
-		copy(cipher.invExpandedKeys[i], cipher.expandedKeys[i])
-		if i > 0 {
-			invMixColumns(cipher.invExpandedKeys[i])
-		}
 	}
-	
 	return cipher, err
 }
 
@@ -258,16 +250,15 @@ func (c *AESCipher) Encrypt(block, dest []byte) {
 func (c *AESCipher) Decrypt(block, dest []byte) {
 	var state []byte = make([]byte, 16)
 	copy(state, block)
-	addRoundKey(state, c.invExpandedKeys[c.numRounds])
+	addRoundKey(state, c.expandedKeys[c.numRounds])
 	for i := c.numRounds - 1; i > 0; i-- {
-		invSubBytes(state)
 		invShiftRows(state)
+		invSubBytes(state)
+		addRoundKey(state, c.expandedKeys[i])
 		invMixColumns(state)
-		addRoundKey(state, c.invExpandedKeys[i])
 	}
-	invSubBytes(state)
 	invShiftRows(state)
-	addRoundKey(state, c.invExpandedKeys[0])
+	invSubBytes(state)
+	addRoundKey(state, c.expandedKeys[0])
 	copy(dest, state)
 }
-

@@ -5,6 +5,7 @@ import (
 	"errors"
 )
 
+// AESCipher is the base structure for encryption/decryption operations using the package
 type AESCipher struct {
 	keyLength    int
 	numRounds    int
@@ -156,11 +157,11 @@ func addRoundKey(state, key []byte) {
 }
 
 func subWord(word uint32) uint32 {
-	var buffer [4]byte
+	var buffer []byte = make([]byte, 4)
 	var result uint32
-	binary.BigEndian.PutUint32(buffer[:], word)
-	subBytes(buffer[:])
-	result = binary.BigEndian.Uint32(buffer[:])
+	binary.BigEndian.PutUint32(buffer, word)
+	subBytes(buffer)
+	result = binary.BigEndian.Uint32(buffer)
 	return result
 }
 
@@ -211,6 +212,8 @@ func extractRoundKey(keys []byte, round int) []byte {
 	return keys[round*16 : round*16+16]
 }
 
+// NewCipher creates and returns a new cipher using the key specified
+// Allowed key lengths: 16, 25 and 32 bytes
 func NewCipher(key []byte) (*AESCipher, error) {
 	var err error = nil
 	if len(key) != 16 && len(key) != 24 && len(key) != 32 {
@@ -231,6 +234,9 @@ func NewCipher(key []byte) (*AESCipher, error) {
 	return cipher, err
 }
 
+// Encrypt encrypt a block of data
+// block and dest must be a slice with length 16
+// The resulting encrypted block is stored in dest
 func (c *AESCipher) Encrypt(block, dest []byte) {
 	var state []byte = make([]byte, 16)
 	copy(state, block)
@@ -247,6 +253,9 @@ func (c *AESCipher) Encrypt(block, dest []byte) {
 	copy(dest, state)
 }
 
+// Decrypt decrypts a block of data
+// block and dest must be a slice with length 16
+// The resulting decrypted block is stored in dest
 func (c *AESCipher) Decrypt(block, dest []byte) {
 	var state []byte = make([]byte, 16)
 	copy(state, block)

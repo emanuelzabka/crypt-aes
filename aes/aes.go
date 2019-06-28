@@ -96,7 +96,7 @@ func invShiftRows(state []byte) {
 	copy(aux, state)
 	for r := 1; r < 4; r++ {
 		for c := 0; c < 4; c++ {
-			// state[r][c] = state[r][(c+shift(r)) mod 4]
+			// state[r][(c+shift(r)) mod 4] = state[r][c]
 			state[r+((c+r)&3)*4] = aux[r+c*4]
 		}
 	}

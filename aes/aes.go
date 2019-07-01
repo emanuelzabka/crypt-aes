@@ -271,3 +271,7 @@ func (c *AESCipher) Decrypt(block, dest []byte) {
 	addRoundKey(state, c.expandedKeys[0])
 	copy(dest, state)
 }
+
+func (c *AESCipher) BlockSize() int {
+	return 16
+}

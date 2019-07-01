@@ -25,3 +25,8 @@ func (c *ECB) Encrypt(block, dest []byte) {
 func (c *ECB) Decrypt(block, dest []byte) {
 	c.cipher.Decrypt(block, dest)
 }
+
+// BlockSize returns the block size used
+func (c *ECB) BlockSize() int {
+	return c.cipher.BlockSize()
+}

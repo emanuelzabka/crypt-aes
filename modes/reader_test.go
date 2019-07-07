@@ -1,8 +1,8 @@
 package modes
 
 import (
-	"testing"
 	"io"
+	"testing"
 )
 
 type MockCipher struct {
@@ -29,7 +29,7 @@ func (c *MockCipher) BlockSize() int {
 
 type MockReader struct {
 	data []byte
-	pos int
+	pos  int
 }
 
 func NewMockReader(data []byte) *MockReader {
@@ -40,7 +40,7 @@ func NewMockReader(data []byte) *MockReader {
 
 func (r *MockReader) Read(p []byte) (n int, err error) {
 	blockSize := len(p)
-	if r.pos + blockSize <= len(r.data) {
+	if r.pos+blockSize <= len(r.data) {
 		copy(p, r.data[r.pos:r.pos+blockSize])
 		r.pos += blockSize
 		n = blockSize
@@ -56,10 +56,22 @@ func (r *MockReader) Read(p []byte) (n int, err error) {
 }
 
 func TestReadSizes(t *testing.T) {
-	sizes := []int {
+	ops := []int{
+		ENCRYPTION, ENCRYPTION, ENCRYPTION, ENCRYPTION, ENCRYPTION,
+		DECRYPTION, DECRYPTION, DECRYPTION, DECRYPTION, DECRYPTION,
+	}
+	sizes := []int{
+		8, 16, 32, 48, 50,
 		8, 16, 32, 48, 50,
 	}
-	expectedReads := [][]int {
+	expectedReads := [][]int{
+		// encryption
+		[]int{16, 16},
+		[]int{16, 16, 16},
+		[]int{16, 16, 16, 16},
+		[]int{16, 16, 16, 16},
+		[]int{16, 16, 16, 16, 16},
+		// decryption
 		[]int{8, 0},
 		[]int{16, 0},
 		[]int{16, 16, 0},
@@ -69,20 +81,26 @@ func TestReadSizes(t *testing.T) {
 	var data [][]byte = make([][]byte, len(sizes))
 	for i := range sizes {
 		data[i] = make([]byte, 16*(len(expectedReads[i])-1))
-		if sizes[i] % 16 != 0 {
-			data[i][15] = byte(16 - sizes[i])
+		if sizes[i]%16 != 0 {
+			data[i][len(data[i])-1] = byte(16 - sizes[i]%16)
 		}
 	}
 	for i := range sizes {
 		c := NewMockCipher(16)
 		r := NewMockReader(data[i])
-		reader := NewReader(c, r, ENCRYPTION)
+		reader := NewReader(c, r, ops[i])
 		dest := make([]byte, 16)
 		for _, expected := range expectedReads[i] {
 			var n int
 			n, _ = reader.Read(dest)
 			if n != expected {
-				t.Errorf("Invalid read. Expected %d bytes, got %d bytes", expected, n)
+				var opstr string
+				if ops[i] == ENCRYPTION {
+					opstr = "encryption"
+				} else {
+					opstr = "decryption"
+				}
+				t.Errorf("Invalid read for op %s. Expected %d bytes, got %d bytes", opstr, expected, n)
 			}
 		}
 	}

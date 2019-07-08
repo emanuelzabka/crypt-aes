@@ -3,7 +3,7 @@ SHELL = /bin/sh
 
 build: crypt-aes
 
-crypt-aes: main.go
+crypt-aes: *.go */*.go */*/*.go
 	go build -o crypt-aes main.go
 
 test: crypt-aes

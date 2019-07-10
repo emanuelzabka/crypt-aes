@@ -5,6 +5,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"github.com/emanuelzabka/crypt-aes/aes"
+	"github.com/emanuelzabka/crypt-aes/modes"
+	"github.com/emanuelzabka/crypt-aes/modes/ecb"
 	flags "github.com/jessevdk/go-flags"
 	"os"
 	"strings"
@@ -16,6 +19,7 @@ var opts struct {
 	Key       string `short:"k" long:"key" description:"Cipher key"`
 	NewKey    bool   `long:"newkey" description:"Generates and outputs a new cipher key"`
 	KeyLength int    `short:"l" long:"key-length" description:"Key length for the operation" choice:"128" choice:"192" choice:"256" default:"192"`
+	OpMode    string `short:"m" long:"mode" description:"Mode of operation" choice:"ecb" default:"ecb"`
 	Input     string `short:"i" long:"input" description:"Input file path or '-' to stdin" default:"-"`
 	Output    string `short:"o" long:"output" description:"Output file path or '-' to stdout" default:"-"`
 }
@@ -33,7 +37,7 @@ func askForKey() string {
 	return strings.Trim(key, "\n")
 }
 
-func checkInputReader() {
+func initInputReader() {
 	if inputReader != nil {
 		return
 	}
@@ -50,7 +54,7 @@ func checkInputReader() {
 	}
 }
 
-func checkOutputWriter() {
+func initOutputWriter() {
 	if outputWriter != nil {
 		return
 	}
@@ -138,7 +142,47 @@ func closeFiles() {
 	}
 }
 
+func process(operation int) {
+	var block []byte
+	var endBlock []byte
+	cipher, err := aes.NewCipher(cipherKey)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error initializing cipher: %s\n", err.Error())
+		os.Exit(1)
+	}
+	block = make([]byte, cipher.BlockSize())
+	ecbCipher := ecb.NewMode(cipher)
+	reader := modes.NewReader(ecbCipher, inputReader, operation)
+	for true {
+		n, err := reader.Read(block)
+		if n == 0 {
+			break
+		}
+		if n < cipher.BlockSize() {
+			endBlock = make([]byte, n)
+			copy(endBlock, block)
+			block = endBlock
+		}
+		_, err = outputWriter.Write(block)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing to output: %s\n", err.Error())
+			os.Exit(1)
+		}
+		if opts.Output == "-" {
+			outputWriter.Flush()
+		}
+	}
+}
+
 func main() {
 	defer closeFiles()
 	parseArgs()
+	initInputReader()
+	initOutputWriter()
+	if opts.Encrypt {
+		process(modes.ENCRYPTION)
+	}
+	if opts.Decrypt {
+		process(modes.DECRYPTION)
+	}
 }

@@ -40,11 +40,18 @@ func NewReader(cipher Cipher, reader io.Reader, op int) *Reader {
 func encRead(r *Reader, dest []byte) (n int, err error) {
 	// block can be of unfixed size
 	n, err = r.reader.Read(r.auxBlock)
+	if r.nextN >= 0 {
+		return n, err
+	}
 	if n < r.size {
 		pad := r.size - n
 		for i := n; i < r.size; i++ {
 			r.auxBlock[i] = byte(pad)
 		}
+	}
+	// mark end of data for next calls
+	if n == 0 {
+		r.nextN = 0
 	}
 	r.cipher.Encrypt(r.auxBlock, dest)
 	n = r.size

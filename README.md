@@ -36,7 +36,7 @@ cat encryptedfile | ./crypt-aes -d -k <key>
 ```
 ./crypt-aes -d -k <key> -i encryptedfile -o originalfile
 ```
-### Usage
+### Usage description
 ```
 ./crypt-aes -h
 ```

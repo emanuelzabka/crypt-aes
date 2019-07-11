@@ -48,6 +48,7 @@ func encRead(r *Reader, dest []byte) (n int, err error) {
 		for i := n; i < r.size; i++ {
 			r.auxBlock[i] = byte(pad)
 		}
+		r.nextN = 0
 	}
 	// mark end of data for next calls
 	if n == 0 {

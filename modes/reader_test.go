@@ -66,11 +66,11 @@ func TestReadSizes(t *testing.T) {
 	}
 	expectedReads := [][]int{
 		// encryption
-		[]int{16, 16},
-		[]int{16, 16, 16},
-		[]int{16, 16, 16, 16},
-		[]int{16, 16, 16, 16},
-		[]int{16, 16, 16, 16, 16},
+		[]int{16, 0},
+		[]int{16, 16, 0},
+		[]int{16, 16, 16, 0},
+		[]int{16, 16, 16, 16, 0},
+		[]int{16, 16, 16, 16, 0},
 		// decryption
 		[]int{8, 0},
 		[]int{16, 0},
@@ -80,9 +80,13 @@ func TestReadSizes(t *testing.T) {
 	}
 	var data [][]byte = make([][]byte, len(sizes))
 	for i := range sizes {
-		data[i] = make([]byte, 16*(len(expectedReads[i])-1))
-		if sizes[i]%16 != 0 {
-			data[i][len(data[i])-1] = byte(16 - sizes[i]%16)
+		if ops[i] == ENCRYPTION {
+			data[i] = make([]byte, sizes[i])
+		} else {
+			data[i] = make([]byte, 16*(len(expectedReads[i])-1))
+			if sizes[i]%16 != 0 {
+				data[i][len(data[i])-1] = byte(16 - sizes[i]%16)
+			}
 		}
 	}
 	for i := range sizes {

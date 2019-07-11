@@ -120,6 +120,7 @@ func parseArgs() {
 			fmt.Fprintf(os.Stderr, "Using key: %s\n", byteToHexString(cipherKey))
 		} else {
 			fmt.Fprintln(os.Stdout, byteToHexString(cipherKey))
+			os.Exit(0)
 		}
 	} else {
 		cipherKey, err = hex.DecodeString(opts.Key)
@@ -144,7 +145,6 @@ func closeFiles() {
 
 func process(operation int) {
 	var block []byte
-	var endBlock []byte
 	cipher, err := aes.NewCipher(cipherKey)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error initializing cipher: %s\n", err.Error())
@@ -158,12 +158,7 @@ func process(operation int) {
 		if n == 0 {
 			break
 		}
-		if n < cipher.BlockSize() {
-			endBlock = make([]byte, n)
-			copy(endBlock, block)
-			block = endBlock
-		}
-		_, err = outputWriter.Write(block)
+		_, err = outputWriter.Write(block[0:n])
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing to output: %s\n", err.Error())
 			os.Exit(1)

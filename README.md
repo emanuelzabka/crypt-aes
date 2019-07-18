@@ -12,7 +12,7 @@ Created for educational purposes.
 ./crypt-aes --newkey -l 128
 # Creates a 192-bit key (default)
 ./crypt-aes --newkey -l 192
-# Creates a 256-bit key (default)
+# Creates a 256-bit key
 ./crypt-aes --newkey -l 256
 ```
 ### Encrypting from standard input to standard output
